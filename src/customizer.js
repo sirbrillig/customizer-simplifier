@@ -1,5 +1,5 @@
-import getAPI from '../helpers/api';
-import getWindow from '../helpers/window';
+import getAPI from './api';
+import getWindow from './window';
 
 const api = getAPI();
 const thisWindow = getWindow();
@@ -128,6 +128,63 @@ export function reloadPreview() {
 	}
 }
 
+/**
+ * Send an event to the other frame.
+ *
+ * If the current frame is the parent frame, this sends a message to the preview
+ * frame. If the current frame is the preview frame, this sends a message to the
+ * parent frame.
+ *
+ * The event can be handled by using `handleEvent`.
+ *
+ * @param {string} eventId - The event Id to send.
+ * @param {*} data - The event payload to send.
+ */
+export function sendEvent( eventId, data ) {
+	getPreviewObject().send( eventId, data );
+}
+
+/**
+ * Handle a custom event from the other frame.
+ *
+ * If the current frame is the parent frame, this listens to messages from the
+ * preview frame. If the current frame is the preview frame, this listens to
+ * messages from the parent frame.
+ *
+ * The event can be sent using `sendEvent`.
+ *
+ * The callback function will receive one parameter:
+ *
+ * 1. The payload data sent by the sender.
+ *
+ * @param {string} eventId - The event Id to listen for.
+ * @param {function} callback - The function to call when the event is heard.
+ */
+export function handleEvent( eventId, callback ) {
+	getPreviewObject().bind( eventId, callback );
+}
+
+/**
+ * Remove a custom event handler.
+ *
+ * Removes a handler from this frame that was added using `handleEvent`.
+ *
+ * If no callback is passed, this will remove all callbacks for the event.
+ *
+ * @param {string} eventId - The event Id to listen for.
+ * @param {function} [callback] - The same function added in `handleEvent` or null.
+ */
+export function removeEventHandler( eventId, callback = false ) {
+	if ( callback ) {
+		getPreviewObject().unbind( eventId, callback );
+		return;
+	}
+	const topic = getPreviewObject().topics[ eventId ];
+	if ( topic ) {
+		topic.empty();
+	}
+}
+
 /*******************
  * Private functions
  *******************/
@@ -147,3 +204,9 @@ function changeSettingValueForApi( thisApi, settingId, value ) {
 	instance.set( value );
 	return value;
 }
+
+function getPreviewObject() {
+	// wp-admin is previewer, frontend is preview. why? no idea.
+	return typeof api.preview !== 'undefined' ? api.preview : api.previewer;
+}
+
